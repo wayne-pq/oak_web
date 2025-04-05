@@ -74,9 +74,6 @@
         <button id="playBtn" class="btn btn-outline-silver" disabled>
             <i class="bi bi-play-fill"></i> 播放 / Play
         </button>
-        <button id="stopBtn" class="btn btn-outline-silver" disabled>
-            <i class="bi bi-stop-fill"></i> 停止 / Stop
-        </button>
         <button id="trimBtn" class="btn btn-outline-silver" disabled>
             <i class="bi bi-download"></i> 剪辑下载 / Trim & Download
         </button>
@@ -99,14 +96,14 @@
         <div class="col-md-6">
             <label class="form-label text-secondary">开始时间</label>
             <div class="d-flex gap-2 align-items-center">
-                <input type="range" id="startTime" class="form-range custom-range" disabled>
+                <input type="range" id="startTime" class="form-range custom-range" step="0.001" disabled>
                 <input type="number" id="startTimeInput" class="form-control time-input" disabled>
             </div>
         </div>
         <div class="col-md-6">
             <label class="form-label text-secondary">结束时间</label>
             <div class="d-flex gap-2 align-items-center">
-                <input type="range" id="endTime" class="form-range custom-range" disabled>
+                <input type="range" id="endTime" class="form-range custom-range" step="0.001" disabled>
                 <input type="number" id="endTimeInput" class="form-control time-input" disabled>
             </div>
         </div>
@@ -141,7 +138,6 @@
     // DOM元素
     const audioFileInput = document.getElementById('audioFile');
     const playBtn = document.getElementById('playBtn');
-    const stopBtn = document.getElementById('stopBtn');
     const trimBtn = document.getElementById('trimBtn');
     const startTimeSlider = document.getElementById('startTime');
     const endTimeSlider = document.getElementById('endTime');
@@ -186,10 +182,16 @@
     function setupAudioControls(buffer) {
         const duration = buffer.duration;
 
-        // 设置时间范围
-        startTimeSlider.max = duration.toFixed(3);
-        endTimeSlider.max = duration.toFixed(3);
-        endTimeSlider.value = duration.toFixed(3);
+
+        // 设置时间范围（使用精确数值）
+        startTimeSlider.max = duration;
+        startTimeSlider.value = 0;  // 初始化为开始时间
+        endTimeSlider.max = duration;
+        endTimeSlider.value = duration;  // 初始化为结束时间
+
+        // 设置输入框
+        startTimeInput.value = 0;
+        startTimeInput.max = duration.toFixed(3);
         endTimeInput.value = duration.toFixed(3);
         endTimeInput.max = duration.toFixed(3);
 
@@ -203,7 +205,6 @@
         startTimeInput.disabled = false;
         endTimeInput.disabled = false;
         playBtn.disabled = false;
-        stopBtn.disabled = false;
         trimBtn.disabled = false;
 
         // 设置事件监听
@@ -404,8 +405,6 @@
         requestAnimationFrame(updateCurrentTime);
     });
 
-    // 停止音频
-    stopBtn.addEventListener('click', stopAudio);
 
     function stopAudio() {
         if (audioSource) {
