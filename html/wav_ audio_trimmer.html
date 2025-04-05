@@ -4,561 +4,553 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WAV音频剪辑工具 / WAV Audio Trimmer</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            line-height: 1.6;
+            background-color: #f8f9fa;
+            min-height: 100vh;
         }
-        h1 {
-            color: #333;
-            text-align: center;
+        .main-container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            padding: 2rem;
         }
-        .container {
-            background-color: #f9f9f9;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-        .audio-controls {
-            margin: 20px 0;
-        }
-        .waveform {
-            width: 100%;
-            height: 150px;
-            background-color: #f0f0f0;
-            margin: 20px 0;
+        .waveform-container {
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin: 1.5rem 0;
             position: relative;
-            overflow: hidden;
         }
-        canvas {
+        #waveformCanvas {
             width: 100%;
-            height: 100%;
-        }
-        .range-controls {
-            display: flex;
-            justify-content: space-between;
-            margin: 20px 0;
-        }
-        .range-input {
-            width: 45%;
-        }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 4px;
+            height: 120px;
             cursor: pointer;
-            font-size: 16px;
-            margin-right: 10px;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-        input[type="file"] {
-            margin-bottom: 20px;
-        }
-        .info {
-            margin-top: 20px;
-            padding: 10px;
-            background-color: #e7f3fe;
-            border-left: 6px solid #2196F3;
-        }
-        .time-display {
-            text-align: center;
-            font-size: 14px;
-            color: #666;
         }
         .selection-range {
             position: absolute;
-            top: 0;
-            bottom: 0;
-            background-color: rgba(76, 175, 80, 0.3);
+            top: 1rem;
+            bottom: 1rem;
+            background-color: rgba(108, 117, 125, 0.3);
             pointer-events: none;
         }
         .time-input {
-            width: 80px;
-            padding: 5px;
-            margin-left: 5px;
+            width: 120px;
+        }
+        .custom-range::-webkit-slider-thumb {
+            background-color: #6c757d;
+        }
+        .custom-range::-moz-range-thumb {
+            background-color: #6c757d;
+        }
+        .custom-range::-ms-thumb {
+            background-color: #6c757d;
+        }
+        .btn-outline-silver {
+            color: #6c757d;
+            border-color: #6c757d;
+        }
+        .btn-outline-silver:hover {
+            background-color: #6c757d;
+            color: white;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>WAV音频剪辑工具 / WAV Audio Trimmer</h1>
-        
-        <div>
-            <input type="file" id="audioFile" accept=".wav" />
-            <button id="playBtn" disabled>播放 / Play</button>
-            <button id="stopBtn" disabled>停止 / Stop</button>
-            <button id="trimBtn" disabled>剪辑并下载 / Trim & Download</button>
+<div class="main-container">
+    <h1 class="text-center mb-4 text-secondary">WAV音频剪辑工具 / WAV Audio Trimmer</h1>
+
+    <!-- 文件上传区域 -->
+    <div class="mb-4">
+        <input type="file" id="audioFile" accept=".wav" class="form-control">
+    </div>
+
+    <!-- 控制按钮组 -->
+    <div class="d-flex gap-2 mb-4 flex-wrap">
+        <button id="playBtn" class="btn btn-outline-silver" disabled>
+            <i class="bi bi-play-fill"></i> 播放 / Play
+        </button>
+        <button id="stopBtn" class="btn btn-outline-silver" disabled>
+            <i class="bi bi-stop-fill"></i> 停止 / Stop
+        </button>
+        <button id="trimBtn" class="btn btn-outline-silver" disabled>
+            <i class="bi bi-download"></i> 剪辑下载 / Trim & Download
+        </button>
+    </div>
+
+    <!-- 波形显示 -->
+    <div class="waveform-container">
+        <div id="waveform">
+            <canvas id="waveformCanvas"></canvas>
+            <div class="selection-range" id="selectionRange"></div>
         </div>
-        
-        <div class="audio-controls">
-            <div class="waveform" id="waveform">
-                <canvas id="waveformCanvas"></canvas>
-                <div class="selection-range" id="selectionRange"></div>
-            </div>
-            <div class="time-display">
-                <span id="currentTime">0:00.000</span> / <span id="duration">0:00.000</span>
-            </div>
-        </div>
-        
-        <div class="range-controls">
-            <div class="range-input">
-                <label for="startTime">开始时间 / Start Time:</label>
-                <input type="range" id="startTime" min="0" max="0" step="0.001" value="0" disabled>
-                <input type="number" id="startTimeInput" class="time-input" min="0" step="0.001" value="0" disabled>
-            </div>
-            <div class="range-input">
-                <label for="endTime">结束时间 / End Time:</label>
-                <input type="range" id="endTime" min="0" max="0" step="0.001" value="0" disabled>
-                <input type="number" id="endTimeInput" class="time-input" min="0" step="0.001" value="0" disabled>
-            </div>
-        </div>
-        
-        <div class="info">
-            <p>使用说明 / Instructions:</p>
-            <ol>
-                <li>上传WAV音频文件 / Upload WAV audio file</li>
-                <li>使用滑块或输入框选择精确的剪辑区间(支持毫秒) / Select range with slider/input (millisecond precision)</li>
-                <li>点击"播放"按钮试听选中区间 / Click "Play" to preview selection</li>
-                <li>点击"剪辑并下载"按钮保存剪辑后的音频 / Click "Trim & Download" to save</li>
-            </ol>
+        <div class="text-center text-muted mt-2 small">
+            <span id="currentTime">0:00.000</span> /
+            <span id="duration">0:00.000</span>
         </div>
     </div>
 
-    <script>
-        // 全局变量
-        let audioContext;
-        let audioBuffer = null;
-        let audioSource = null;
-        let isPlaying = false;
-        let startOffset = 0;
-        let playStartTime = 0;
-        let analyser;
-        let waveformData = [];
-        
-        // DOM元素
-        const audioFileInput = document.getElementById('audioFile');
-        const playBtn = document.getElementById('playBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const trimBtn = document.getElementById('trimBtn');
-        const startTimeSlider = document.getElementById('startTime');
-        const endTimeSlider = document.getElementById('endTime');
-        const startTimeInput = document.getElementById('startTimeInput');
-        const endTimeInput = document.getElementById('endTimeInput');
-        const currentTimeDisplay = document.getElementById('currentTime');
-        const durationDisplay = document.getElementById('duration');
-        const waveformCanvas = document.getElementById('waveformCanvas');
-        const selectionRange = document.getElementById('selectionRange');
-        
-        // 初始化音频上下文
-        function initAudioContext() {
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
+    <!-- 时间控制 -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <label class="form-label text-secondary">开始时间</label>
+            <div class="d-flex gap-2 align-items-center">
+                <input type="range" id="startTime" class="form-range custom-range" disabled>
+                <input type="number" id="startTimeInput" class="form-control time-input" disabled>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label text-secondary">结束时间</label>
+            <div class="d-flex gap-2 align-items-center">
+                <input type="range" id="endTime" class="form-range custom-range" disabled>
+                <input type="number" id="endTimeInput" class="form-control time-input" disabled>
+            </div>
+        </div>
+    </div>
+
+    <!-- 使用说明 -->
+    <div class="alert alert-secondary">
+        <h5 class="alert-heading mb-3">使用说明 / Instructions</h5>
+        <ol class="mb-0">
+            <li>上传WAV音频文件 / Upload WAV audio file</li>
+            <li>使用滑块或输入框选择精确的剪辑区间(支持毫秒) / Select range with slider/input (millisecond precision)</li>
+            <li>点击"播放"按钮试听选中区间 / Click "Play" to preview selection</li>
+            <li>点击"剪辑并下载"按钮保存剪辑后的音频 / Click "Trim & Download" to save</li>
+        </ol>
+    </div>
+</div>
+
+<!-- Bootstrap 5 JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // 全局变量
+    let audioContext;
+    let audioBuffer = null;
+    let audioSource = null;
+    let isPlaying = false;
+    let startOffset = 0;
+    let playStartTime = 0;
+    let analyser;
+    let waveformData = [];
+
+    // DOM元素
+    const audioFileInput = document.getElementById('audioFile');
+    const playBtn = document.getElementById('playBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const trimBtn = document.getElementById('trimBtn');
+    const startTimeSlider = document.getElementById('startTime');
+    const endTimeSlider = document.getElementById('endTime');
+    const startTimeInput = document.getElementById('startTimeInput');
+    const endTimeInput = document.getElementById('endTimeInput');
+    const currentTimeDisplay = document.getElementById('currentTime');
+    const durationDisplay = document.getElementById('duration');
+    const waveformCanvas = document.getElementById('waveformCanvas');
+    const selectionRange = document.getElementById('selectionRange');
+
+    // 初始化音频上下文
+    function initAudioContext() {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
         }
-        
-        // 加载音频文件
-        audioFileInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            
-            initAudioContext();
-            
-            const fileReader = new FileReader();
-            fileReader.onload = function(e) {
-                audioContext.decodeAudioData(e.target.result)
-                    .then(function(buffer) {
-                        audioBuffer = buffer;
-                        setupAudioControls(buffer);
-                        drawWaveform(buffer);
-                    })
-                    .catch(function(err) {
-                        console.error('Error decoding audio data', err);
-                        alert('无法解码音频文件，请确保是有效的WAV文件');
-                    });
-            };
-            fileReader.readAsArrayBuffer(file);
-        });
-        
-        // 设置音频控制
-        function setupAudioControls(buffer) {
-            const duration = buffer.duration;
-            
-            // 设置时间范围
-            startTimeSlider.max = duration.toFixed(3);
-            endTimeSlider.max = duration.toFixed(3);
-            endTimeSlider.value = duration.toFixed(3);
-            endTimeInput.value = duration.toFixed(3);
-            endTimeInput.max = duration.toFixed(3);
-            
-            // 更新显示
-            durationDisplay.textContent = formatTime(duration);
-            startTimeInput.value = '0';
-            
-            // 启用控件
-            startTimeSlider.disabled = false;
-            endTimeSlider.disabled = false;
-            startTimeInput.disabled = false;
-            endTimeInput.disabled = false;
-            playBtn.disabled = false;
-            stopBtn.disabled = false;
-            trimBtn.disabled = false;
-            
-            // 设置事件监听
-            startTimeSlider.addEventListener('input', function() {
-                startTimeInput.value = this.value;
-                updateSelection();
-            });
-            
-            endTimeSlider.addEventListener('input', function() {
-                endTimeInput.value = this.value;
-                updateSelection();
-            });
-            
-            startTimeInput.addEventListener('input', function() {
-                const value = parseFloat(this.value) || 0;
-                const max = parseFloat(this.max) || 0;
-                const clampedValue = Math.min(Math.max(value, 0), max);
-                this.value = clampedValue.toFixed(3);
-                startTimeSlider.value = this.value;
-                updateSelection();
-            });
-            
-            endTimeInput.addEventListener('input', function() {
-                const value = parseFloat(this.value) || 0;
-                const max = parseFloat(this.max) || 0;
-                const clampedValue = Math.min(Math.max(value, 0), max);
-                this.value = clampedValue.toFixed(3);
-                endTimeSlider.value = this.value;
-                updateSelection();
-            });
-            
-            // 初始化选择范围
+    }
+
+    // 加载音频文件
+    audioFileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        initAudioContext();
+
+        const fileReader = new FileReader();
+        fileReader.onload = function(e) {
+            audioContext.decodeAudioData(e.target.result)
+                .then(function(buffer) {
+                    audioBuffer = buffer;
+                    setupAudioControls(buffer);
+                    drawWaveform(buffer);
+                })
+                .catch(function(err) {
+                    console.error('Error decoding audio data', err);
+                    alert('无法解码音频文件，请确保是有效的WAV文件');
+                });
+        };
+        fileReader.readAsArrayBuffer(file);
+    });
+
+    // 设置音频控制
+    function setupAudioControls(buffer) {
+        const duration = buffer.duration;
+
+        // 设置时间范围
+        startTimeSlider.max = duration.toFixed(3);
+        endTimeSlider.max = duration.toFixed(3);
+        endTimeSlider.value = duration.toFixed(3);
+        endTimeInput.value = duration.toFixed(3);
+        endTimeInput.max = duration.toFixed(3);
+
+        // 更新显示
+        durationDisplay.textContent = formatTime(duration);
+        startTimeInput.value = '0';
+
+        // 启用控件
+        startTimeSlider.disabled = false;
+        endTimeSlider.disabled = false;
+        startTimeInput.disabled = false;
+        endTimeInput.disabled = false;
+        playBtn.disabled = false;
+        stopBtn.disabled = false;
+        trimBtn.disabled = false;
+
+        // 设置事件监听
+        startTimeSlider.addEventListener('input', function() {
+            startTimeInput.value = this.value;
             updateSelection();
+        });
+
+        endTimeSlider.addEventListener('input', function() {
+            endTimeInput.value = this.value;
+            updateSelection();
+        });
+
+        startTimeInput.addEventListener('input', function() {
+            const value = parseFloat(this.value) || 0;
+            const max = parseFloat(this.max) || 0;
+            const clampedValue = Math.min(Math.max(value, 0), max);
+            this.value = clampedValue.toFixed(3);
+            startTimeSlider.value = this.value;
+            updateSelection();
+        });
+
+        endTimeInput.addEventListener('input', function() {
+            const value = parseFloat(this.value) || 0;
+            const max = parseFloat(this.max) || 0;
+            const clampedValue = Math.min(Math.max(value, 0), max);
+            this.value = clampedValue.toFixed(3);
+            endTimeSlider.value = this.value;
+            updateSelection();
+        });
+
+        // 初始化选择范围
+        updateSelection();
+    }
+
+    // 更新选择范围
+    function updateSelection() {
+        const startTime = parseFloat(startTimeSlider.value);
+        const endTime = parseFloat(endTimeSlider.value);
+
+        // 确保开始时间不大于结束时间
+        if (startTime > endTime) {
+            startTimeSlider.value = endTime.toFixed(3);
+            startTimeInput.value = endTime.toFixed(3);
         }
-        
-        // 更新选择范围
-        function updateSelection() {
-            const startTime = parseFloat(startTimeSlider.value);
-            const endTime = parseFloat(endTimeSlider.value);
-            
-            // 确保开始时间不大于结束时间
-            if (startTime > endTime) {
-                startTimeSlider.value = endTime.toFixed(3);
-                startTimeInput.value = endTime.toFixed(3);
-            }
-            
-            // 确保结束时间不小于开始时间
-            if (endTime < startTime) {
-                endTimeSlider.value = startTime.toFixed(3);
-                endTimeInput.value = startTime.toFixed(3);
-            }
-            
-            // 更新波形选择区域
-            updateWaveformSelection();
+
+        // 确保结束时间不小于开始时间
+        if (endTime < startTime) {
+            endTimeSlider.value = startTime.toFixed(3);
+            endTimeInput.value = startTime.toFixed(3);
         }
-        
+
         // 更新波形选择区域
-        function updateWaveformSelection() {
-            if (!audioBuffer) return;
-            
-            const startTime = parseFloat(startTimeSlider.value);
-            const endTime = parseFloat(endTimeSlider.value);
-            const duration = audioBuffer.duration;
-            
-            const startPercent = (startTime / duration) * 100;
-            const endPercent = (endTime / duration) * 100;
-            const widthPercent = endPercent - startPercent;
-            
-            selectionRange.style.left = startPercent + '%';
-            selectionRange.style.width = widthPercent + '%';
-        }
-        
+        updateWaveformSelection();
+    }
+
+    // 更新波形选择区域
+    function updateWaveformSelection() {
+        if (!audioBuffer) return;
+
+        const startTime = parseFloat(startTimeSlider.value);
+        const endTime = parseFloat(endTimeSlider.value);
+        const duration = audioBuffer.duration;
+
+        const startPercent = (startTime / duration) * 100;
+        const endPercent = (endTime / duration) * 100;
+        const widthPercent = endPercent - startPercent;
+
+        selectionRange.style.left = startPercent + '%';
+        selectionRange.style.width = widthPercent + '%';
+    }
+
+    // 绘制波形
+    function drawWaveform(buffer) {
+        const canvas = waveformCanvas;
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width = canvas.offsetWidth;
+        const height = canvas.height = canvas.offsetHeight;
+
+        // 获取左声道数据
+        const leftChannel = buffer.getChannelData(0);
+        const step = Math.ceil(leftChannel.length / width);
+        waveformData = [];
+
+        // 清空画布
+        ctx.fillStyle = '#f0f0f0';
+        ctx.fillRect(0, 0, width, height);
+
         // 绘制波形
-        function drawWaveform(buffer) {
-            const canvas = waveformCanvas;
-            const ctx = canvas.getContext('2d');
-            const width = canvas.width = canvas.offsetWidth;
-            const height = canvas.height = canvas.offsetHeight;
-            
-            // 获取左声道数据
-            const leftChannel = buffer.getChannelData(0);
-            const step = Math.ceil(leftChannel.length / width);
-            waveformData = [];
-            
-            // 清空画布
-            ctx.fillStyle = '#f0f0f0';
-            ctx.fillRect(0, 0, width, height);
-            
-            // 绘制波形
-            ctx.fillStyle = '#4CAF50';
-            ctx.strokeStyle = '#4CAF50';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            
-            for (let i = 0; i < width; i++) {
-                const start = i * step;
-                const end = start + step;
-                let min = 1.0;
-                let max = -1.0;
-                
-                for (let j = start; j < end && j < leftChannel.length; j++) {
-                    const sample = leftChannel[j];
-                    if (sample > max) max = sample;
-                    if (sample < min) min = sample;
-                }
-                
-                // 保存数据用于点击定位
-                waveformData.push({
-                    x: i,
-                    time: (i / width) * buffer.duration,
-                    min: min,
-                    max: max
-                });
-                
-                // 绘制波形线
-                const yMin = (1 + min) * height / 2;
-                const yMax = (1 + max) * height / 2;
-                
-                if (i === 0) {
-                    ctx.moveTo(i, yMin);
-                } else {
-                    ctx.lineTo(i, yMin);
-                }
-                
-                ctx.lineTo(i, yMax);
+        ctx.fillStyle = '#4CAF50';
+        ctx.strokeStyle = '#4CAF50';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+
+        for (let i = 0; i < width; i++) {
+            const start = i * step;
+            const end = start + step;
+            let min = 1.0;
+            let max = -1.0;
+
+            for (let j = start; j < end && j < leftChannel.length; j++) {
+                const sample = leftChannel[j];
+                if (sample > max) max = sample;
+                if (sample < min) min = sample;
             }
-            
-            ctx.stroke();
-            
-            // 添加点击事件
-            canvas.addEventListener('click', function(e) {
-                const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                
-                // 找到最近的数据点
-                let closest = waveformData.reduce((prev, curr) => {
-                    return (Math.abs(curr.x - x) < Math.abs(prev.x - x)) ? curr : prev;
-                });
-                
-                // 设置开始或结束时间
-                const clickTime = closest.time;
-                if (Math.abs(parseFloat(startTimeSlider.value) - clickTime) < 
-                    Math.abs(parseFloat(endTimeSlider.value) - clickTime)) {
-                    startTimeSlider.value = clickTime.toFixed(3);
-                    startTimeInput.value = clickTime.toFixed(3);
-                } else {
-                    endTimeSlider.value = clickTime.toFixed(3);
-                    endTimeInput.value = clickTime.toFixed(3);
-                }
-                
-                updateSelection();
+
+            // 保存数据用于点击定位
+            waveformData.push({
+                x: i,
+                time: (i / width) * buffer.duration,
+                min: min,
+                max: max
             });
+
+            // 绘制波形线
+            const yMin = (1 + min) * height / 2;
+            const yMax = (1 + max) * height / 2;
+
+            if (i === 0) {
+                ctx.moveTo(i, yMin);
+            } else {
+                ctx.lineTo(i, yMin);
+            }
+
+            ctx.lineTo(i, yMax);
         }
-        
-        // 播放音频
-        playBtn.addEventListener('click', function() {
-            if (!audioBuffer) return;
-            
-            if (isPlaying) {
-                stopAudio();
-                return;
+
+        ctx.stroke();
+
+        // 添加点击事件
+        canvas.addEventListener('click', function(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+
+            // 找到最近的数据点
+            let closest = waveformData.reduce((prev, curr) => {
+                return (Math.abs(curr.x - x) < Math.abs(prev.x - x)) ? curr : prev;
+            });
+
+            // 设置开始或结束时间
+            const clickTime = closest.time;
+            if (Math.abs(parseFloat(startTimeSlider.value) - clickTime) <
+                Math.abs(parseFloat(endTimeSlider.value) - clickTime)) {
+                startTimeSlider.value = clickTime.toFixed(3);
+                startTimeInput.value = clickTime.toFixed(3);
+            } else {
+                endTimeSlider.value = clickTime.toFixed(3);
+                endTimeInput.value = clickTime.toFixed(3);
             }
-            
-            initAudioContext();
-            
-            const startTime = parseFloat(startTimeSlider.value);
-            const endTime = parseFloat(endTimeSlider.value);
-            const duration = endTime - startTime;
-            
-            // 停止当前播放
-            if (audioSource) {
-                audioSource.stop();
-            }
-            
-            audioSource = audioContext.createBufferSource();
-            audioSource.buffer = audioBuffer;
-            
-            // 创建分析器用于可视化
-            analyser = audioContext.createAnalyser();
-            analyser.fftSize = 2048;
-            audioSource.connect(analyser);
-            analyser.connect(audioContext.destination);
-            
-            audioSource.onended = function() {
-                isPlaying = false;
-                playBtn.textContent = '播放';
-                currentTimeDisplay.textContent = formatTime(startTime);
-            };
-            
-            // 精确设置播放区间
-            startOffset = startTime;
-            audioSource.start(0, startTime, duration);
-            playStartTime = audioContext.currentTime;
-            isPlaying = true;
-            playBtn.textContent = '暂停';
-            
-            // 更新当前时间显示
-            requestAnimationFrame(updateCurrentTime);
+
+            updateSelection();
         });
-        
-        // 停止音频
-        stopBtn.addEventListener('click', stopAudio);
-        
-        function stopAudio() {
-            if (audioSource) {
-                audioSource.stop();
-                audioSource = null;
-            }
+    }
+
+    // 播放音频
+    playBtn.addEventListener('click', function() {
+        if (!audioBuffer) return;
+
+        if (isPlaying) {
+            stopAudio();
+            return;
+        }
+
+        initAudioContext();
+
+        const startTime = parseFloat(startTimeSlider.value);
+        const endTime = parseFloat(endTimeSlider.value);
+        const duration = endTime - startTime;
+
+        // 停止当前播放
+        if (audioSource) {
+            audioSource.stop();
+        }
+
+        audioSource = audioContext.createBufferSource();
+        audioSource.buffer = audioBuffer;
+
+        // 创建分析器用于可视化
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 2048;
+        audioSource.connect(analyser);
+        analyser.connect(audioContext.destination);
+
+        audioSource.onended = function() {
             isPlaying = false;
-            playBtn.textContent = '播放';
-            currentTimeDisplay.textContent = formatTime(parseFloat(startTimeSlider.value));
-        }
-        
+            playBtn.textContent = '播放 / Play';
+            currentTimeDisplay.textContent = formatTime(startTime);
+        };
+
+        // 精确设置播放区间
+        startOffset = startTime;
+        audioSource.start(0, startTime, duration);
+        playStartTime = audioContext.currentTime;
+        isPlaying = true;
+        playBtn.textContent = '暂停 / pause';
+
         // 更新当前时间显示
-        function updateCurrentTime() {
-            if (!isPlaying) return;
-            
-            const currentTime = startOffset + (audioContext.currentTime - playStartTime);
-            const endTime = parseFloat(endTimeSlider.value);
-            
-            if (currentTime >= endTime) {
-                stopAudio();
-                return;
-            }
-            
-            currentTimeDisplay.textContent = formatTime(currentTime);
-            requestAnimationFrame(updateCurrentTime);
+        requestAnimationFrame(updateCurrentTime);
+    });
+
+    // 停止音频
+    stopBtn.addEventListener('click', stopAudio);
+
+    function stopAudio() {
+        if (audioSource) {
+            audioSource.stop();
+            audioSource = null;
         }
-        
-        // 剪辑并下载音频
-        trimBtn.addEventListener('click', function() {
-            if (!audioBuffer) return;
-            
-            const startTime = parseFloat(startTimeSlider.value);
-            const endTime = parseFloat(endTimeSlider.value);
-            
-            if (startTime >= endTime) {
-                alert('开始时间必须小于结束时间');
-                return;
-            }
-            
-            // 计算采样点(精确到毫秒)
-            const sampleRate = audioBuffer.sampleRate;
-            const startOffset = Math.floor(startTime * sampleRate);
-            const endOffset = Math.floor(endTime * sampleRate);
-            const frameCount = endOffset - startOffset;
-            
-            // 创建新的音频缓冲区
-            const newBuffer = audioContext.createBuffer(
-                audioBuffer.numberOfChannels,
-                frameCount,
-                sampleRate
-            );
-            
-            // 复制选中的数据
-            for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
-                const channelData = audioBuffer.getChannelData(channel);
-                const newChannelData = newBuffer.getChannelData(channel);
-                
-                for (let i = 0; i < frameCount; i++) {
-                    newChannelData[i] = channelData[i + startOffset];
-                }
-            }
-            
-            // 导出为WAV文件
-            exportWAV(newBuffer);
-        });
-        
-        // 导出WAV文件
-        function exportWAV(buffer) {
-            const numChannels = buffer.numberOfChannels;
-            const sampleRate = buffer.sampleRate;
-            const length = buffer.length;
-            
-            // 创建交错的数据视图
-            const interleaved = new Float32Array(length * numChannels);
-            for (let channel = 0; channel < numChannels; channel++) {
-                const channelData = buffer.getChannelData(channel);
-                for (let i = 0; i < length; i++) {
-                    interleaved[i * numChannels + channel] = channelData[i];
-                }
-            }
-            
-            // 转换为16位PCM
-            const bitDepth = 16;
-            const bytesPerSample = bitDepth / 8;
-            const dataLength = length * numChannels * bytesPerSample;
-            
-            const bufferView = new DataView(new ArrayBuffer(44 + dataLength));
-            let offset = 0;
-            
-            // WAV头部
-            writeString(bufferView, offset, 'RIFF'); offset += 4;
-            bufferView.setUint32(offset, 36 + dataLength, true); offset += 4;
-            writeString(bufferView, offset, 'WAVE'); offset += 4;
-            
-            // fmt子块
-            writeString(bufferView, offset, 'fmt '); offset += 4;
-            bufferView.setUint32(offset, 16, true); offset += 4; // 子块大小
-            bufferView.setUint16(offset, 1, true); offset += 2; // PCM格式
-            bufferView.setUint16(offset, numChannels, true); offset += 2;
-            bufferView.setUint32(offset, sampleRate, true); offset += 4;
-            bufferView.setUint32(offset, sampleRate * numChannels * bytesPerSample, true); offset += 4;
-            bufferView.setUint16(offset, numChannels * bytesPerSample, true); offset += 2;
-            bufferView.setUint16(offset, bitDepth, true); offset += 2;
-            
-            // data子块
-            writeString(bufferView, offset, 'data'); offset += 4;
-            bufferView.setUint32(offset, dataLength, true); offset += 4;
-            
-            // 写入PCM数据
-            for (let i = 0; i < interleaved.length; i++) {
-                const sample = Math.max(-1, Math.min(1, interleaved[i]));
-                bufferView.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
-                offset += 2;
-            }
-            
-            // 创建Blob并下载
-            const blob = new Blob([bufferView], { type: 'audio/wav' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'trimmed_audio.wav';
-            document.body.appendChild(a);
-            a.click();
-            
-            // 清理
-            setTimeout(function() {
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }, 100);
+        isPlaying = false;
+        playBtn.textContent = '播放';
+        currentTimeDisplay.textContent = formatTime(parseFloat(startTimeSlider.value));
+    }
+
+    // 更新当前时间显示
+    function updateCurrentTime() {
+        if (!isPlaying) return;
+
+        const currentTime = startOffset + (audioContext.currentTime - playStartTime);
+        const endTime = parseFloat(endTimeSlider.value);
+
+        if (currentTime >= endTime) {
+            stopAudio();
+            return;
         }
-        
-        // 辅助函数：写入字符串到DataView
-        function writeString(view, offset, string) {
-            for (let i = 0; i < string.length; i++) {
-                view.setUint8(offset + i, string.charCodeAt(i));
+
+        currentTimeDisplay.textContent = formatTime(currentTime);
+        requestAnimationFrame(updateCurrentTime);
+    }
+
+    // 剪辑并下载音频
+    trimBtn.addEventListener('click', function() {
+        if (!audioBuffer) return;
+
+        const startTime = parseFloat(startTimeSlider.value);
+        const endTime = parseFloat(endTimeSlider.value);
+
+        if (startTime >= endTime) {
+            alert('开始时间必须小于结束时间');
+            return;
+        }
+
+        // 计算采样点(精确到毫秒)
+        const sampleRate = audioBuffer.sampleRate;
+        const startOffset = Math.floor(startTime * sampleRate);
+        const endOffset = Math.floor(endTime * sampleRate);
+        const frameCount = endOffset - startOffset;
+
+        // 创建新的音频缓冲区
+        const newBuffer = audioContext.createBuffer(
+            audioBuffer.numberOfChannels,
+            frameCount,
+            sampleRate
+        );
+
+        // 复制选中的数据
+        for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
+            const channelData = audioBuffer.getChannelData(channel);
+            const newChannelData = newBuffer.getChannelData(channel);
+
+            for (let i = 0; i < frameCount; i++) {
+                newChannelData[i] = channelData[i + startOffset];
             }
         }
-        
-        // 格式化时间显示 (秒 -> mm:ss.ms)
-        function formatTime(seconds) {
-            const minutes = Math.floor(seconds / 60);
-            const secs = Math.floor(seconds % 60);
-            const milliseconds = Math.floor((seconds % 1) * 1000);
-            return `${minutes}:${secs < 10 ? '0' : ''}${secs}.${milliseconds.toString().padStart(3, '0')}`;
+
+        // 导出为WAV文件
+        exportWAV(newBuffer);
+    });
+
+    // 导出WAV文件
+    function exportWAV(buffer) {
+        const numChannels = buffer.numberOfChannels;
+        const sampleRate = buffer.sampleRate;
+        const length = buffer.length;
+
+        // 创建交错的数据视图
+        const interleaved = new Float32Array(length * numChannels);
+        for (let channel = 0; channel < numChannels; channel++) {
+            const channelData = buffer.getChannelData(channel);
+            for (let i = 0; i < length; i++) {
+                interleaved[i * numChannels + channel] = channelData[i];
+            }
         }
-    </script>
+
+        // 转换为16位PCM
+        const bitDepth = 16;
+        const bytesPerSample = bitDepth / 8;
+        const dataLength = length * numChannels * bytesPerSample;
+
+        const bufferView = new DataView(new ArrayBuffer(44 + dataLength));
+        let offset = 0;
+
+        // WAV头部
+        writeString(bufferView, offset, 'RIFF'); offset += 4;
+        bufferView.setUint32(offset, 36 + dataLength, true); offset += 4;
+        writeString(bufferView, offset, 'WAVE'); offset += 4;
+
+        // fmt子块
+        writeString(bufferView, offset, 'fmt '); offset += 4;
+        bufferView.setUint32(offset, 16, true); offset += 4; // 子块大小
+        bufferView.setUint16(offset, 1, true); offset += 2; // PCM格式
+        bufferView.setUint16(offset, numChannels, true); offset += 2;
+        bufferView.setUint32(offset, sampleRate, true); offset += 4;
+        bufferView.setUint32(offset, sampleRate * numChannels * bytesPerSample, true); offset += 4;
+        bufferView.setUint16(offset, numChannels * bytesPerSample, true); offset += 2;
+        bufferView.setUint16(offset, bitDepth, true); offset += 2;
+
+        // data子块
+        writeString(bufferView, offset, 'data'); offset += 4;
+        bufferView.setUint32(offset, dataLength, true); offset += 4;
+
+        // 写入PCM数据
+        for (let i = 0; i < interleaved.length; i++) {
+            const sample = Math.max(-1, Math.min(1, interleaved[i]));
+            bufferView.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+            offset += 2;
+        }
+
+        // 创建Blob并下载
+        const blob = new Blob([bufferView], { type: 'audio/wav' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'trimmed_audio.wav';
+        document.body.appendChild(a);
+        a.click();
+
+        // 清理
+        setTimeout(function() {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 100);
+    }
+
+    // 辅助函数：写入字符串到DataView
+    function writeString(view, offset, string) {
+        for (let i = 0; i < string.length; i++) {
+            view.setUint8(offset + i, string.charCodeAt(i));
+        }
+    }
+
+    // 格式化时间显示 (秒 -> mm:ss.ms)
+    function formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        const milliseconds = Math.floor((seconds % 1) * 1000);
+        return `${minutes}:${secs < 10 ? '0' : ''}${secs}.${milliseconds.toString().padStart(3, '0')}`;
+    }
+</script>
 </body>
 </html>
