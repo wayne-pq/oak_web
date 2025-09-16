@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文本差异对比</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+body { background: #f8f9fa; padding: 20px; }
+h3 { font-weight: 600; color: #0d6efd; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace; }
+.pane { min-height: 300px; border: 1px solid #dee2e6; border-radius: .5rem; padding: 8px; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.05); white-space: pre-wrap; overflow-wrap: break-word; line-height: 1.3; }
+.diff-line { margin: 0; padding: 1px 0; }
+.line-removed { background-color: rgba(220,53,69,.14); border-left: 3px solid #dc3545; padding-left:4px; border-radius:4px; }
+.line-added { background-color: rgba(25,135,84,.14); border-left: 3px solid #198754; padding-left:4px; border-radius:4px; }
+.toolbar { background: #fff; border: 1px solid #dee2e6; border-radius: .5rem; padding: 10px 15px; box-shadow: 0 2px 6px rgba(0,0,0,.05); margin-bottom: 1rem; }
+</style>
+</head>
+<body>
+<div class="container">
+<h3 class="mb-4 text-center">📄 文本差异对比工具</h3>
+
+<div class="toolbar d-flex gap-2">
+  <button id="sampleBtn" class="btn btn-outline-secondary btn-sm">📥 载入示例</button>
+  <button id="clearBtn" class="btn btn-outline-danger btn-sm">🗑️ 清空</button>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-6">
+    <label class="form-label fw-semibold">文本 A</label>
+    <div id="left" class="pane mono" contenteditable="true" spellcheck="false"></div>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label fw-semibold">文本 B</label>
+    <div id="right" class="pane mono" contenteditable="true" spellcheck="false"></div>
+  </div>
+</div>
+</div>
+
+<script>
+// --- LCS行级 ---
+function lcsTable(a,b){
+  const n=a.length,m=b.length;
+  const dp=Array(n+1).fill(null).map(()=>Array(m+1).fill(0));
+  for(let i=n-1;i>=0;i--){
+    for(let j=m-1;j>=0;j--){
+      dp[i][j]=a[i]===b[j]? dp[i+1][j+1]+1 : Math.max(dp[i+1][j], dp[i][j+1]);
+    }
+  }
+  return dp;
+}
+
+function diffLines(aText,bText){
+  const a=aText.split(/\n/), b=bText.split(/\n/);
+  const dp=lcsTable(a,b);
+  const outA=[], outB=[];
+  let i=0,j=0;
+  while(i<a.length && j<b.length){
+    if(a[i]===b[j]){ outA.push(a[i]); outB.push(b[j]); i++; j++; }
+    else if(dp[i+1][j]>=dp[i][j+1]){ outA.push({line:a[i],type:'removed'}); i++; }
+    else { outB.push({line:b[j],type:'added'}); j++; }
+  }
+  while(i<a.length){ outA.push({line:a[i],type:'removed'}); i++; }
+  while(j<b.length){ outB.push({line:b[j],type:'added'}); j++; }
+  return {outA,outB};
+}
+
+function renderLine(line){
+  if(typeof line==='string') return `<div class="diff-line">${escapeHtml(line)}</div>`;
+  if(line.type==='removed') return `<div class="diff-line line-removed">${escapeHtml(line.line)}</div>`;
+  if(line.type==='added') return `<div class="diff-line line-added">${escapeHtml(line.line)}</div>`;
+  return '';
+}
+
+function escapeHtml(s){return s.replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+// --- 主函数 ---
+function doCompare(){
+  const leftDiv=document.getElementById('left');
+  const rightDiv=document.getElementById('right');
+  const aText=leftDiv.innerText;
+  const bText=rightDiv.innerText;
+  const {outA,outB}=diffLines(aText,bText);
+
+  // 保存光标位置
+  const sel=window.getSelection();
+  const ranges=[];
+  for(let i=0;i<sel.rangeCount;i++){ ranges.push(sel.getRangeAt(i).cloneRange()); }
+
+  leftDiv.innerHTML=outA.map(renderLine).join('');
+  rightDiv.innerHTML=outB.map(renderLine).join('');
+
+  // 尝试恢复光标位置（简单）
+  if(ranges.length){ sel.removeAllRanges(); ranges.forEach(r=>sel.addRange(r)); }
+}
+
+// --- 按钮 ---
+document.getElementById('clearBtn').addEventListener('click',()=>{
+  document.getElementById('left').innerText='';
+  document.getElementById('right').innerText='';
+});
+document.getElementById('sampleBtn').addEventListener('click',()=>{
+  const sampleA=`行1\n行2\n行3`;
+  const sampleB=`行1\n行2修改\n行3\n行4`;
+  document.getElementById('left').innerText=sampleA;
+  document.getElementById('right').innerText=sampleB;
+  doCompare();
+});
+
+// --- 实时监听 ---
+['left','right'].forEach(id=>{
+  const div=document.getElementById(id);
+  div.addEventListener('input', doCompare);
+  div.addEventListener('paste',()=>setTimeout(doCompare,0));
+});
+</script>
+</body>
+</html>
