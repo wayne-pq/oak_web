@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JSON 格式化校验</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background:#f8f9fa; padding:20px; }
+    .pane { min-height:300px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace; white-space:pre-wrap; overflow:auto; }
+    .line-num { color:#6c757d; user-select:none; padding-right:8px; text-align:right; width:48px; }
+    .editor-wrapper { border:1px solid #dee2e6; border-radius:.5rem; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,.03); }
+    .error-snippet { font-family: ui-monospace, monospace; background:#fff5f5; border:1px solid rgba(220,53,69,.14); padding:8px; border-radius:6px; }
+    .ok-badge { background: rgba(25,135,84,.12); color:#198754; padding:.35rem .6rem; border-radius:.4rem; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h3 class="mb-3">JSON 格式化校验</h3>
+
+  <div class="row mb-3 g-3">
+    <div class="col-md-8">
+      <div class="d-flex gap-2 mb-2">
+        <button id="formatBtn" class="btn btn-primary btn-sm">🧾 格式化</button>
+        <button id="minifyBtn" class="btn btn-outline-secondary btn-sm">🗜️ 压缩</button>
+        <button id="copyBtn" class="btn btn-outline-secondary btn-sm">📋 复制</button>
+        <button id="downloadBtn" class="btn btn-outline-success btn-sm">⬇️ 下载</button>
+        <label class="btn btn-outline-info btn-sm mb-0" for="fileInput">📂 上传</label>
+        <input id="fileInput" type="file" accept="application/json,text/*" style="display:none">
+        <button id="sampleBtn" class="btn btn-outline-secondary btn-sm">示例</button>
+        <div class="ms-auto d-flex align-items-center gap-2">
+          <div id="status" class="ok-badge">空</div>
+        </div>
+      </div>
+
+      <div class="editor-wrapper">
+        <div class="d-flex">
+          <div class="line-num p-2" id="lineNums" style="border-right:1px solid #eee;">1</div>
+          <textarea id="editor" class="form-control pane" placeholder="在此粘贴或输入 JSON（支持 Ctrl+Enter 校验）"></textarea>
+        </div>
+      </div>
+
+      <div class="form-text mt-2">支持格式化、压缩、复制、下载和文件拖拽上传。</div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="card-title">校验信息</h6>
+          <div id="infoArea"><div class="text-muted">等待校验…</div></div>
+        </div>
+      </div>
+
+      <div class="card mt-3">
+        <div class="card-body">
+          <h6 class="card-title">快捷操作</h6>
+          <ul class="list-unstyled mb-0 small">
+            <li>Ctrl + Enter：校验</li>
+            <li>拖入文件到输入框可自动加载</li>
+            <li>下载会把当前内容保存为 <code>data.json</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Utils
+function escapeHtml(s){ return s.replace(/[&<>\"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function setStatus(ok, text){ const s = document.getElementById('status'); s.textContent = text; s.style.background = ok ? 'rgba(25,135,84,.12)' : 'rgba(220,53,69,.12)'; s.style.color = ok ? '#198754' : '#b02a37'; }
+
+// line numbers
+const editor = document.getElementById('editor');
+const lineNums = document.getElementById('lineNums');
+function updateLineNumbers(){ const lines = editor.value.split('\n').length; let out=''; for(let i=1;i<=lines;i++){ out += i + '\n'; } lineNums.textContent = out; }
+editor.addEventListener('input', updateLineNumbers);
+editor.addEventListener('scroll', ()=>{ lineNums.scrollTop = editor.scrollTop; });
+updateLineNumbers();
+
+// Parse error -> line/col
+function posToLineCol(text,pos){ pos = Math.max(0, pos); let line=1, col=1; for(let i=0;i<pos && i<text.length;i++){ if(text[i]==='\n'){ line++; col=1; } else col++; } return {line,col}; }
+
+function showError(err, text){ const info = document.getElementById('infoArea');
+  let msg = '<div class="text-danger"><strong>解析错误：</strong>' + escapeHtml(err.message) + '</div>';
+  // try to extract position from message like '... at position 10'
+  const m = /position (\d+)/.exec(err.message) || /at line (\d+) column (\d+)/i.exec(err.message);
+  if(m){ if(m[1] && !/line/i.test(err.message)){ const pos = parseInt(m[1],10); const lc = posToLineCol(text,pos); msg += `<div class="mt-2">错误位置：第 ${lc.line} 行，第 ${lc.col} 列</div>`; }
+    else if(m[1] && m[2]){ msg += `<div class="mt-2">错误位置：第 ${m[1]} 行，第 ${m[2]} 列</div>`; }
+  }
+  // show snippet around error if possible
+  const posMatch = /position (\d+)/.exec(err.message);
+  if(posMatch){ const pos=parseInt(posMatch[1],10); const start=Math.max(0,pos-30); const end=Math.min(text.length,pos+30);
+    const snippet = text.slice(start,end); const before = escapeHtml(snippet.slice(0,pos-start)); const after = escapeHtml(snippet.slice(pos-start));
+    msg += `<div class="mt-2 error-snippet"><code>${before}<mark style="background: rgba(220,53,69,.12)">${after.slice(0,1)||''}</mark>${escapeHtml(after.slice(1))}</code></div>`; }
+  info.innerHTML = msg; setStatus(false,'错误');
+}
+
+function showOk(obj){ const info = document.getElementById('infoArea'); info.innerHTML = '<div class="text-success">✓ JSON 有效 （类型：' + (Array.isArray(obj)? 'Array' : typeof obj) + '）</div>'; setStatus(true,'有效'); }
+
+// Actions
+function validateJson(showMessage=true){ const text = editor.value.trim(); if(!text){ document.getElementById('infoArea').innerHTML = '<div class="text-muted">输入为空</div>'; setStatus(false,'空'); return false; }
+  try{ const obj = JSON.parse(text); if(showMessage) showOk(obj); return obj; }catch(err){ showError(err,text); return false; } }
+
+function formatJson(){ const obj = validateJson(); if(!obj) return; try{ const pretty = JSON.stringify(obj, null, 2); editor.value = pretty; updateLineNumbers(); showOk(obj); }catch(e){ console.error(e); } }
+
+function minifyJson(){ const obj = validateJson(); if(!obj) return; try{ const min = JSON.stringify(obj); editor.value = min; updateLineNumbers(); showOk(obj); }catch(e){ console.error(e); } }
+
+function copyToClipboard(){ navigator.clipboard.writeText(editor.value).then(()=>{
+  const info = document.getElementById('infoArea'); info.innerHTML = '<div class="text-success">已复制到剪贴板</div>'; }, ()=>{
+  const info = document.getElementById('infoArea'); info.innerHTML = '<div class="text-danger">复制失败（请使用浏览器支持的页面）</div>'; }); }
+
+function downloadJson(){ const blob = new Blob([editor.value], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='data.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
+
+// File upload / drag & drop
+const fileInput = document.getElementById('fileInput'); fileInput.addEventListener('change', (e)=>{ const f = e.target.files[0]; if(!f) return; const r = new FileReader(); r.onload = ()=>{ editor.value = r.result; updateLineNumbers(); validateJson(); }; r.readAsText(f); });
+
+// drag drop
+editor.addEventListener('dragover', (e)=>{ e.preventDefault(); editor.classList.add('border-primary'); });
+editor.addEventListener('dragleave', (e)=>{ e.preventDefault(); editor.classList.remove('border-primary'); });
+editor.addEventListener('drop', (e)=>{ e.preventDefault(); editor.classList.remove('border-primary'); const f = e.dataTransfer.files && e.dataTransfer.files[0]; if(f){ const r=new FileReader(); r.onload=()=>{ editor.value = r.result; updateLineNumbers(); validateJson(); }; r.readAsText(f); } });
+
+// Buttons wiring
+document.getElementById('formatBtn').addEventListener('click', formatJson);
+document.getElementById('minifyBtn').addEventListener('click', minifyJson);
+document.getElementById('copyBtn').addEventListener('click', copyToClipboard);
+document.getElementById('downloadBtn').addEventListener('click', downloadJson);
+document.getElementById('sampleBtn').addEventListener('click', ()=>{ const sample = JSON.stringify({name:'示例',items:[1,2,3],nested:{a:true}},null,2); editor.value = sample; updateLineNumbers(); validateJson(); });
+
+// keyboard shortcut
+editor.addEventListener('keydown',(e)=>{ if(e.ctrlKey && e.key==='Enter'){ e.preventDefault(); validateJson(true); } });
+
+// initialize
+updateLineNumbers();
+</script>
+</body>
+</html>
