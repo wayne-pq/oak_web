@@ -3,340 +3,77 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>JSON 格式化校验</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>JSON 格式化校验工具</title>
+
+    <!-- Bootstrap 样式 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- JSONEditor 样式 -->
+    <link href="https://cdn.jsdelivr.net/npm/jsoneditor@10.4.1/dist/jsoneditor.min.css" rel="stylesheet">
+
     <style>
-        body { background: #f8f9fa; padding: 20px; }
-        .pane {
-            width: 100%;
-            box-sizing: border-box;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow: hidden;       /* 不要内部滚动 */
-            resize: none;
-            padding: .6rem;
-            border: none;
-            background: transparent;
-            line-height: 1.5;
-            font-size: 0.95rem;
+        body {
+            padding: 20px;
+            background-color: #f8f9fa;
         }
-        .line-num {
-            color: #6c757d;
-            user-select: none;
-            padding: .6rem 8px;
-            text-align: right;
-            width: 54px;
-            box-sizing: border-box;
-            border-right: 1px solid #eee;
-            white-space: pre;
-            line-height: 1.5;
-            overflow: hidden;
-            font-family: inherit;
-            font-size: inherit;
-        }
-        .editor-wrapper {
+        #jsoneditor {
+            height: 70vh; /* 占视口高度 70% */
             border: 1px solid #dee2e6;
             border-radius: .5rem;
-            background: #fff;
-            box-shadow: 0 2px 6px rgba(0,0,0,.03);
-            overflow: visible;
-        }
-        .error-snippet {
-            font-family: ui-monospace, monospace;
-            background: #fff5f5;
-            border: 1px solid rgba(220,53,69,.14);
-            padding: 8px;
-            border-radius: 6px;
-        }
-        .ok-badge {
-            background: rgba(25,135,84,.12);
-            color: #198754;
-            padding: .35rem .6rem;
-            border-radius: .4rem;
-        }
-
-        /* 隐藏镜像，用于测量高度（JS 会动态设置宽度/样式） */
-        .mirror {
-            position: absolute;
-            left: -9999px;
-            top: 0;
-            visibility: hidden;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            box-sizing: border-box;
         }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="d-flex gap-2 mb-2">
-        <button id="formatBtn" class="btn btn-primary btn-sm">🧾 格式化</button>
-        <button id="minifyBtn" class="btn btn-outline-secondary btn-sm">🗜️ 压缩</button>
-        <button id="copyBtn" class="btn btn-outline-secondary btn-sm">📋 复制</button>
-        <button id="downloadBtn" class="btn btn-outline-success btn-sm">⬇️ 下载</button>
-        <label class="btn btn-outline-info btn-sm mb-0" for="fileInput">📂 上传</label>
-        <input id="fileInput" type="file" accept="application/json,text/*" style="display:none">
-        <button id="sampleBtn" class="btn btn-outline-secondary btn-sm">示例</button>
-        <div class="ms-auto d-flex align-items-center gap-2">
-            <div id="status" class="ok-badge">空</div>
-        </div>
+    <h4 class="mb-3">JSON 格式化校验工具</h4>
+
+    <div class="d-flex gap-2 mb-3">
+        <button id="formatBtn" class="btn btn-primary btn-sm">格式化</button>
+        <button id="modeBtn" class="btn btn-secondary btn-sm">切换模式</button>
     </div>
 
-    <!-- 校验信息（在编辑框上方） -->
-    <div class="card mb-2">
-        <div class="card-body py-2">
-            <h6 class="card-title mb-1">校验信息</h6>
-            <div id="infoArea"><div class="text-muted">等待校验…</div></div>
-        </div>
-    </div>
-
-    <!-- 快捷操作（在编辑框上方） -->
-    <div class="card mb-3">
-        <div class="card-body py-2">
-            <h6 class="card-title mb-1">快捷操作</h6>
-            <ul class="list-unstyled mb-0 small">
-                <li>Ctrl + Enter：校验</li>
-                <li>拖入文件到输入框可自动加载</li>
-                <li>下载会把当前内容保存为 <code>data.json</code></li>
-            </ul>
-        </div>
-    </div>
-
-    <!-- 编辑器：行号 + 文本区 -->
-    <div class="editor-wrapper">
-        <div style="display:flex; align-items:flex-start;">
-            <div class="line-num" id="lineNums">1</div>
-            <textarea id="editor" class="form-control pane" placeholder="在此粘贴或输入 JSON（支持 Ctrl+Enter 校验）"></textarea>
-        </div>
-    </div>
-
-    <div class="form-text mt-2">支持格式化、压缩、复制、下载和文件拖拽上传。</div>
+    <div id="jsoneditor"></div>
 </div>
 
-<!-- 隐藏镜像 -->
-<div id="mirror" class="mirror" aria-hidden="true"></div>
+<!-- 依赖 -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsoneditor@10.4.1/dist/jsoneditor.min.js"></script>
 
 <script>
-    // 元素
-    const editor = document.getElementById('editor');
-    const lineNums = document.getElementById('lineNums');
-    const infoArea = document.getElementById('infoArea');
-    const status = document.getElementById('status');
-    const mirror = document.getElementById('mirror');
-
-    // Utils
-    function escapeHtml(s) {
-        return s.replace(/[&<>\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-    }
-    function setStatus(ok, text) {
-        status.textContent = text;
-        status.style.background = ok ? 'rgba(25,135,84,.12)' : 'rgba(220,53,69,.12)';
-        status.style.color = ok ? '#198754' : '#b02a37';
-    }
-
-    // 初始化镜像样式（尽量与 textarea 保持一致）
-    function syncMirrorStyles() {
-        const cs = window.getComputedStyle(editor);
-        mirror.style.fontFamily = cs.fontFamily;
-        mirror.style.fontSize = cs.fontSize;
-        mirror.style.fontWeight = cs.fontWeight;
-        mirror.style.fontStyle = cs.fontStyle;
-        mirror.style.lineHeight = cs.lineHeight;
-        mirror.style.padding = cs.paddingTop + ' ' + cs.paddingRight + ' ' + cs.paddingBottom + ' ' + cs.paddingLeft;
-        mirror.style.width = (editor.clientWidth) + 'px';
-        mirror.style.boxSizing = cs.boxSizing;
-        mirror.style.letterSpacing = cs.letterSpacing;
-    }
-
-    // 使用镜像测量并设置高度，同时生成视觉行数（包含折行）
-    function autoResizeAndLineNums() {
-        syncMirrorStyles();
-        // put content into mirror. Add a trailing newline to ensure last line measured
-        mirror.textContent = editor.value || ' ';
-        // measure
-        const targetHeight = mirror.scrollHeight;
-        // set textarea and lineNums height
-        editor.style.height = targetHeight + 'px';
-        lineNums.style.height = targetHeight + 'px';
-
-        // compute visual line count
-        const cs = window.getComputedStyle(editor);
-        const lh = parseFloat(cs.lineHeight) || (parseFloat(cs.fontSize) * 1.5);
-        const visualLines = Math.max(1, Math.round(mirror.scrollHeight / lh));
-        // build numbers
-        let out = '';
-        for (let i = 1; i <= visualLines; i++) out += i + '\n';
-        lineNums.textContent = out;
-    }
-
-    // Parse error -> line/col
-    function posToLineCol(text, pos) {
-        pos = Math.max(0, pos);
-        let line = 1, col = 1;
-        for (let i = 0; i < pos && i < text.length; i++) {
-            if (text[i] === '\n') { line++; col = 1; } else col++;
+    const container = document.getElementById("jsoneditor");
+    const options = {
+        mode: "code",              // 默认代码模式
+        modes: ["code", "tree"],   // 允许切换
+        onError: function (err) {
+            alert("JSON 错误: " + err.toString());
         }
-        return {line, col};
-    }
-    function showError(err, text) {
-        let msg = '<div class="text-danger"><strong>解析错误：</strong>' + escapeHtml(err.message) + '</div>';
-        // 尝试解析 position
-        const m = /position (\d+)/.exec(err.message) || /at line (\d+) column (\d+)/i.exec(err.message);
-        if (m) {
-            if (m[1] && !/line/i.test(err.message)) {
-                const pos = parseInt(m[1], 10);
-                const lc = posToLineCol(text, pos);
-                msg += `<div class="mt-2">错误位置：第 ${lc.line} 行，第 ${lc.col} 列</div>`;
-            } else if (m[1] && m[2]) {
-                msg += `<div class="mt-2">错误位置：第 ${m[1]} 行，第 ${m[2]} 列</div>`;
-            }
-        }
-        // snippet
-        const posMatch = /position (\d+)/.exec(err.message);
-        if (posMatch) {
-            const pos = parseInt(posMatch[1], 10);
-            const start = Math.max(0, pos - 30);
-            const end = Math.min(text.length, pos + 30);
-            const snippet = text.slice(start, end);
-            const before = escapeHtml(snippet.slice(0, pos - start));
-            const after = escapeHtml(snippet.slice(pos - start));
-            msg += `<div class="mt-2 error-snippet"><code>${before}<mark style="background: rgba(220,53,69,.12)">${after.slice(0,1) || ''}</mark>${escapeHtml(after.slice(1))}</code></div>`;
-        }
-        infoArea.innerHTML = msg;
-        setStatus(false, '错误');
-    }
-    function showOk(obj) {
-        infoArea.innerHTML = '<div class="text-success">✓ JSON 有效 （类型：' + (Array.isArray(obj) ? 'Array' : typeof obj) + '）</div>';
-        setStatus(true, '有效');
-    }
+    };
 
-    // Actions
-    function validateJson(showMessage = true) {
-        const text = editor.value.trim();
-        if (!text) {
-            infoArea.innerHTML = '<div class="text-muted">输入为空</div>';
-            setStatus(false, '空');
-            return false;
-        }
+    const editor = new JSONEditor(container, options);
+
+    // demo 初始内容
+    editor.set({
+        name: "示例",
+        items: [1, 2, 3],
+        nested: { a: true }
+    });
+
+    // 格式化（尝试解析并 set 回去）
+    document.getElementById("formatBtn").onclick = function () {
         try {
-            const obj = JSON.parse(text);
-            if (showMessage) showOk(obj);
-            return obj;
-        } catch (err) {
-            showError(err, text);
-            return false;
+            const json = editor.get();
+            editor.set(json); // 重新 set 就会自动格式化
+        } catch (e) {
+            alert("无效 JSON: " + e.message);
         }
-    }
+    };
 
-    function formatJson() {
-        const obj = validateJson();
-        if (!obj) return;
-        try {
-            const pretty = JSON.stringify(obj, null, 2);
-            editor.value = pretty;
-            autoResizeAndLineNums();
-            showOk(obj);
-        } catch (e) { console.error(e); }
-    }
-
-    function minifyJson() {
-        const obj = validateJson();
-        if (!obj) return;
-        try {
-            const min = JSON.stringify(obj);
-            editor.value = min;
-            autoResizeAndLineNums();
-            showOk(obj);
-        } catch (e) { console.error(e); }
-    }
-
-    function copyToClipboard() {
-        navigator.clipboard.writeText(editor.value).then(() => {
-            infoArea.innerHTML = '<div class="text-success">已复制到剪贴板</div>';
-        }, () => {
-            infoArea.innerHTML = '<div class="text-danger">复制失败（请使用支持的浏览器）</div>';
-        });
-    }
-
-    function downloadJson() {
-        const blob = new Blob([editor.value], {type: 'application/json'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = 'data.json';
-        document.body.appendChild(a); a.click(); a.remove();
-        URL.revokeObjectURL(url);
-    }
-
-    // File upload / drag & drop
-    const fileInput = document.getElementById('fileInput');
-    fileInput.addEventListener('change', (e) => {
-        const f = e.target.files[0];
-        if (!f) return;
-        const r = new FileReader();
-        r.onload = () => {
-            editor.value = r.result;
-            autoResizeAndLineNums();
-            validateJson();
-        };
-        r.readAsText(f);
-    });
-
-    // drag drop
-    editor.addEventListener('dragover', (e) => { e.preventDefault(); editor.classList.add('border-primary'); });
-    editor.addEventListener('dragleave', (e) => { e.preventDefault(); editor.classList.remove('border-primary'); });
-    editor.addEventListener('drop', (e) => {
-        e.preventDefault(); editor.classList.remove('border-primary');
-        const f = e.dataTransfer.files && e.dataTransfer.files[0];
-        if (f) {
-            const r = new FileReader();
-            r.onload = () => {
-                editor.value = r.result;
-                autoResizeAndLineNums();
-                validateJson();
-            };
-            r.readAsText(f);
-        }
-    });
-
-    // Buttons wiring
-    document.getElementById('formatBtn').addEventListener('click', formatJson);
-    document.getElementById('minifyBtn').addEventListener('click', minifyJson);
-    document.getElementById('copyBtn').addEventListener('click', copyToClipboard);
-    document.getElementById('downloadBtn').addEventListener('click', downloadJson);
-    document.getElementById('sampleBtn').addEventListener('click', () => {
-        const sample = JSON.stringify({name: '示例', items: [1,2,3], nested: {a: true}}, null, 2);
-        editor.value = sample;
-        autoResizeAndLineNums();
-        validateJson();
-    });
-
-    // keyboard shortcut
-    editor.addEventListener('keydown', (e) => {
-        if (e.ctrlKey && e.key === 'Enter') {
-            e.preventDefault();
-            validateJson(true);
-        }
-    });
-
-    // 输入时自动调整高度
-    editor.addEventListener('input', () => {
-        autoResizeAndLineNums();
-    });
-
-    // 窗口尺寸变化时同步（保证折行变化也会重新测量）
-    window.addEventListener('resize', () => {
-        autoResizeAndLineNums();
-    });
-
-    // 初始化（空或预置内容）
-    (function init() {
-        // 如果有预置内容就填充，没有就占位一个空格，确保高度计算正确
-        if (!editor.value) editor.value = '';
-        autoResizeAndLineNums();
-    })();
-
+    // 切换模式（code <-> tree）
+    document.getElementById("modeBtn").onclick = function () {
+        const currentMode = editor.getMode();
+        const newMode = currentMode === "code" ? "tree" : "code";
+        editor.setMode(newMode);
+    };
 </script>
 </body>
 </html>
