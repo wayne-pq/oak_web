@@ -11,30 +11,43 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/diff2html/bundles/css/diff2html.min.css" />
 
     <style>
-        textarea {
+        /* 让两个输入框尽量占满宽度 */
+        .textarea-row textarea {
             font-family: monospace;
-            height: 180px;
+            height: 220px;      /* 高度略增加 */
+            width: 100%;        /* 占满列宽 */
+            resize: vertical;   /* 允许垂直拉伸 */
+        }
+
+        /* 减小卡片左右 padding，让 diff 占满宽度 */
+        .card-body {
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+
+        body {
+            background: #f8f9fa;
         }
     </style>
 </head>
-<body class="bg-light">
+<body>
 
-<div class="container py-4">
+<div class="container-fluid py-3">
 
     <!-- 顶部按钮 -->
-    <div class="d-flex justify-content-start mb-3">
+    <div class="mb-3">
         <button id="compareBtn" class="btn btn-primary">生成对比</button>
     </div>
 
     <!-- 输入区 -->
-    <div class="row mb-3">
+    <div class="row g-2 textarea-row mb-3">
         <div class="col-md-6">
-            <label for="oldText" class="form-label fw-bold">左 JSON</label>
-            <textarea id="oldText" class="form-control" placeholder="输入 JSON"></textarea>
+            <label for="oldText" class="form-label fw-bold">旧 JSON</label>
+            <textarea id="oldText" class="form-control" placeholder="输入旧 JSON"></textarea>
         </div>
         <div class="col-md-6">
-            <label for="newText" class="form-label fw-bold">右 JSON</label>
-            <textarea id="newText" class="form-control" placeholder="输入 JSON"></textarea>
+            <label for="newText" class="form-label fw-bold">新 JSON</label>
+            <textarea id="newText" class="form-control" placeholder="输入新 JSON"></textarea>
         </div>
     </div>
 
@@ -74,7 +87,7 @@
         renderDiff(oldTextEl.value, newTextEl.value);
     });
 
-    // 页面加载时默认 JSON 示例
+    // 默认 JSON 示例
     const defaultOld = `{
   "name": "Alice",
   "age": 25,
