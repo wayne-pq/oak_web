@@ -14,9 +14,9 @@
         /* 让两个输入框尽量占满宽度 */
         .textarea-row textarea {
             font-family: monospace;
-            height: 220px;      /* 高度略增加 */
-            width: 100%;        /* 占满列宽 */
-            resize: vertical;   /* 允许垂直拉伸 */
+            height: 220px;
+            width: 100%;
+            resize: vertical;
         }
 
         /* 减小卡片左右 padding，让 diff 占满宽度 */
@@ -35,8 +35,9 @@
 <div class="container-fluid py-3">
 
     <!-- 顶部按钮 -->
-    <div class="mb-3">
+    <div class="mb-3 d-flex gap-2">
         <button id="compareBtn" class="btn btn-primary">生成对比</button>
+        <button id="openNewTabBtn" class="btn btn-outline-secondary">显示太小? 新标签页打开</button>
     </div>
 
     <!-- 输入区 -->
@@ -70,6 +71,7 @@
     const oldTextEl = document.getElementById('oldText');
     const newTextEl = document.getElementById('newText');
     const compareBtn = document.getElementById('compareBtn');
+    const openNewTabBtn = document.getElementById('openNewTabBtn');
     const diffContainer = document.getElementById('diff');
 
     function renderDiff(oldStr, newStr) {
@@ -85,6 +87,13 @@
     // 点击按钮生成对比
     compareBtn.addEventListener('click', () => {
         renderDiff(oldTextEl.value, newTextEl.value);
+    });
+
+    // 点击按钮新开标签页
+    openNewTabBtn.addEventListener('click', () => {
+        // 若此页面本身是嵌入的（iframe内），则打开独立版本
+        const url = window.location.href.split('#')[0]; // 当前页面的路径
+        window.open(url, '_blank');
     });
 
     // 默认 JSON 示例
