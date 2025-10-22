@@ -16,12 +16,14 @@
             padding: 10px;
             background-color: #f8f9fa;
         }
+
         #errorBox {
             display: none;
             margin-bottom: 10px;
         }
+
         #jsoneditor {
-            height: 80vh; /* 占视口高度 80% */
+            height: 80vh;
             border: 1px solid #dee2e6;
             border-radius: .5rem;
         }
@@ -32,9 +34,11 @@
     <!-- 错误提示栏 -->
     <div id="errorBox" class="alert alert-danger" role="alert"></div>
 
-    <!-- 切换模式按钮 -->
+    <!-- 按钮栏 -->
     <div class="mb-2">
-        <button id="modeBtn" class="btn btn-primary btn-sm">切换模式</button>
+        <button id="formatToggleBtn" class="btn btn-primary">格式化/压缩</button>
+        <button id="modeBtn" class="btn btn btn-secondary">切换模式</button>
+        <button id="openNewTabBtn" class="btn btn-outline-secondary">显示太小? 新标签页打开</button>
     </div>
 
     <!-- JSON 编辑器 -->
@@ -47,18 +51,20 @@
 <script>
     const errorBox = document.getElementById("errorBox");
     const container = document.getElementById("jsoneditor");
+    const openNewTabBtn = document.getElementById('openNewTabBtn');
+    const formatToggleBtn = document.getElementById('formatToggleBtn');
 
     const options = {
-        mode: "code",              // 默认代码模式
-        modes: ["code", "tree"],   // 允许切换
+        mode: "code",
+        modes: ["code", "tree"],
         onError: function (err) {
             errorBox.style.display = "block";
             errorBox.textContent = "JSON 错误: " + err.toString();
         },
         onChange: function () {
             try {
-                editor.get(); // 尝试获取 JSON
-                errorBox.style.display = "none"; // 校验通过
+                editor.get();
+                errorBox.style.display = "none";
             } catch (e) {
                 errorBox.style.display = "block";
                 errorBox.textContent = "JSON 错误: " + e.message;
@@ -72,15 +78,40 @@
     editor.set({
         name: "示例",
         items: [1, 2, 3],
-        nested: { a: true }
+        nested: {a: true}
     });
 
-    // 切换模式按钮
+    // 模式切换
     document.getElementById("modeBtn").onclick = function () {
         const currentMode = editor.getMode();
         const newMode = currentMode === "code" ? "tree" : "code";
         editor.setMode(newMode);
     };
+
+    // 新开标签页
+    openNewTabBtn.addEventListener('click', () => {
+        const url = window.location.href.split('#')[0];
+        window.open(url, '_blank');
+    });
+
+    // 压缩/格式化切换
+    formatToggleBtn.addEventListener('click', () => {
+        try {
+            const json = editor.get();
+            const currentText = editor.getText();
+
+            // 判断当前是否为格式化状态（多行）
+            const isPretty = currentText.includes('\n');
+            const newText = isPretty
+                ? JSON.stringify(json) // 压缩
+                : JSON.stringify(json, null, 2); // 格式化
+
+            editor.updateText(newText);
+        } catch (e) {
+            errorBox.style.display = "block";
+            errorBox.textContent = "无法切换格式: " + e.message;
+        }
+    });
 </script>
 </body>
 </html>
