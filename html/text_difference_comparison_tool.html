@@ -40,6 +40,7 @@
     <!-- 顶部按钮 -->
     <div class="mb-3 d-flex gap-2">
         <button id="compareBtn" class="btn btn-primary">生成对比</button>
+        <button id="formatJsonBtn" class="btn btn-outline-success">格式化 JSON</button>
         <button id="openNewTabBtn" class="btn btn-outline-secondary">显示太小? 新标签页打开</button>
     </div>
 
@@ -74,8 +75,22 @@
     const oldTextEl = document.getElementById('oldText');
     const newTextEl = document.getElementById('newText');
     const compareBtn = document.getElementById('compareBtn');
+    const formatJsonBtn = document.getElementById('formatJsonBtn');
     const openNewTabBtn = document.getElementById('openNewTabBtn');
     const diffContainer = document.getElementById('diff');
+
+    // 格式化 JSON 函数（带错误处理）
+    function formatJson(text) {
+        try {
+            // 先去除首尾空白，再解析为 JSON 对象，最后格式化输出（缩进 2 个空格）
+            const parsed = JSON.parse(text.trim());
+            return JSON.stringify(parsed, null, 2);
+        } catch (e) {
+            // 如果不是合法 JSON，返回原文本并提示
+            alert('输入的文本不是合法的 JSON 格式，无法格式化！');
+            return text;
+        }
+    }
 
     // 渲染 diff
     function renderDiff(oldStr, newStr) {
@@ -90,6 +105,15 @@
 
     // 点击生成对比
     compareBtn.addEventListener('click', () => {
+        renderDiff(oldTextEl.value, newTextEl.value);
+    });
+
+    // 点击格式化 JSON
+    formatJsonBtn.addEventListener('click', () => {
+        // 格式化左右两个文本框的内容
+        oldTextEl.value = formatJson(oldTextEl.value);
+        newTextEl.value = formatJson(newTextEl.value);
+        // 格式化后自动刷新对比结果
         renderDiff(oldTextEl.value, newTextEl.value);
     });
 
